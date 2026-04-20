@@ -1,0 +1,203 @@
+{% extends 'books/base.html' %}
+
+{% block title %}{{ book.name }} - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Book Information -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="book-cover mb-3" style="height: 300px;">
+                            <i class="fas fa-book fa-5x"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <h1 class="display-5 mb-3">{{ book.name }}</h1>
+
+                        {% if book.series_name %}
+                            <h4 class="text-muted mb-3">{{ book.series_name }}</h4>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <h5 class="text-primary">
+                                <i class="fas fa-user me-2"></i>{{ book.author_first }} {{ book.author_last }}
+                            </h5>
+                            <a href="{% url 'books:author_detail' book.author_id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-user-circle me-1"></i>View Author
+                            </a>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                <strong>Genre:</strong> {{ book.genre|default:"Not specified" }}
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Publisher:</strong> {{ book.publisher|default:"Not specified" }}
+                            </div>
+                        </div>
+
+                        {% if book.pub_date %}
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                <strong>Published:</strong> {{ book.pub_date|date:"M j, Y" }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Pricing and Promotions -->
+                        <div class="mb-4">
+                            {% if book.discount_percent %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="text-decoration-line-through text-muted me-2">${{ book.price }}</span>
+                                    <span class="h4 text-success mb-0">${{ book.discounted_price }}</span>
+                                    <span class="badge bg-danger ms-2">{{ book.discount_percent }}% OFF</span>
+                                </div>
+                                <small class="text-muted">
+                                    Promotion ends: {{ book.promotion_end|date:"M j, Y" }}
+                                </small>
+                            {% else %}
+                                <h3 class="text-primary">${{ book.price }}</h3>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2 d-md-flex">
+                            {% if user.is_authenticated %}
+                                {% if is_available %}
+                                    <form method="post" action="{% url 'books:checkout_book' book.book_id %}" class="me-md-2">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-shopping-cart me-2"></i>Checkout Book
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'books:reserve_book' book.book_id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-lg">
+                                            <i class="fas fa-clock me-2"></i>Reserve Book
+                                        </button>
+                                    </form>
+                                    <small class="text-muted d-block mt-1">{{ reservation_count }} people in queue</small>
+                                {% endif %}
+
+                                <form method="post" action="{% url 'books:add_favorite_book' book.book_id %}" class="ms-md-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-primary">
+                                        <i class="fas fa-heart me-1"></i>Add to Favorites
+                                    </button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Login to Checkout
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews Section -->
+        {% if reviews %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-star me-2"></i>Reviews
+                    {% if rating.review_count > 0 %}
+                        <span class="badge bg-primary ms-2">
+                            {{ rating.average_rating|floatformat:1 }}/10 ({{ rating.review_count }} review{{ rating.review_count|pluralize }})
+                        </span>
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                {% for review in reviews %}
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>{{ review.user.first }} {{ review.user.last }}</strong>
+                            <div class="star-rating mb-2">
+                                {% for i in "123456789"|make_list %}
+                                    {% if forloop.counter <= review.score %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="ms-2">{{ review.score }}/10</span>
+                            </div>
+                        </div>
+                        <small class="text-muted">{{ review.created_at|date:"M j, Y" }}</small>
+                    </div>
+                    {% if review.book_name %}
+                        <p class="text-muted small mb-1">Review for: {{ review.book_name }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Book Stats -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Book Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h4 text-primary">{{ rating.average_rating|floatformat:1|default:0 }}</div>
+                        <small class="text-muted">Average Rating</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-success">{{ rating.review_count|default:0 }}</div>
+                        <small class="text-muted">Total Reviews</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Availability Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Availability</h5>
+            </div>
+            <div class="card-body">
+                {% if is_available %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>This book is currently available for checkout.
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock me-2"></i>This book is currently checked out.
+                        <br><small>{{ reservation_count }} people are waiting in the reservation queue.</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        {% if user.is_authenticated %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="{% url 'books:user_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-tachometer-alt me-1"></i>My Dashboard
+                </a>
+                <a href="{% url 'books:catalog' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Catalog
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

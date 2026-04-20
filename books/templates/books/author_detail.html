@@ -1,0 +1,127 @@
+{% extends 'books/base.html' %}
+
+{% block title %}{{ author.first }} {{ author.last }} - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Author Information -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-user-circle fa-5x text-primary"></i>
+                </div>
+                <h2 class="card-title">{{ author.first }} {{ author.last }}</h2>
+
+                {% if author.city or author.country %}
+                    <p class="text-muted mb-2">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        {% if author.city and author.country %}
+                            {{ author.city }}, {{ author.country }}
+                        {% elif author.city %}
+                            {{ author.city }}
+                        {% else %}
+                            {{ author.country }}
+                        {% endif %}
+                    </p>
+                {% endif %}
+
+                <div class="mb-3">
+                    <span class="badge bg-primary">{{ book_count }} Book{{ book_count|pluralize }}</span>
+                </div>
+
+                {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'books:add_favorite_author' author.authorID %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-heart me-1"></i>Add to Favorites
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if author.bio %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Biography</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ author.bio }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Author's Books -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-book me-2"></i>Books by {{ author.first }} {{ author.last }}
+                    <span class="badge bg-secondary ms-2">{{ book_count }}</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                {% if books %}
+                    <div class="row">
+                        {% for book in books %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card book-card h-100">
+                                <div class="book-cover">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="card-title">{{ book.1 }}</h5> {# name #}
+                                    {% if book.2 %} {# series_name #}
+                                        <p class="text-muted small mb-1">{{ book.2 }}</p>
+                                    {% endif %}
+
+                                    <div class="mb-2">
+                                        {% if book.5 %} {# genre #}
+                                            <span class="badge bg-secondary">{{ book.5 }}</span>
+                                        {% endif %}
+                                        {% if book.3 %} {# publisher #}
+                                            <span class="badge bg-light text-dark">{{ book.3 }}</span>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if book.6 %} {# pub_date #}
+                                        <p class="text-muted small mb-2">Published: {{ book.6|date:"Y" }}</p>
+                                    {% endif %}
+
+                                    <div class="mt-auto">
+                                        <p class="card-text mb-2">
+                                            <strong>${{ book.4 }}</strong> {# price #}
+                                        </p>
+                                        <div class="d-grid gap-2">
+                                            <a href="{% url 'books:book_detail' book.0 %}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye me-1"></i>View Details
+                                            </a>
+                                            {% if user.is_authenticated %}
+                                                <form method="post" action="{% url 'books:checkout_book' book.0 %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                                        <i class="fas fa-shopping-cart me-1"></i>Checkout
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-book-open fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Books Found</h4>
+                        <p class="text-muted">This author doesn't have any books in our catalog yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

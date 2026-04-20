@@ -1,0 +1,130 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Book Catalog - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4 text-center mb-4">
+            <i class="fas fa-book-open text-primary me-3"></i>Book Catalog
+        </h1>
+
+        <!-- Search and Filter -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" name="search" placeholder="Search books by title or series..."
+                                   value="{{ search_term }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" name="genre">
+                            <option value="">All Genres</option>
+                            {% for genre in genres %}
+                                <option value="{{ genre }}" {% if selected_genre == genre %}selected{% endif %}>
+                                    {{ genre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Info -->
+        {% if is_search %}
+            <p class="text-muted">Found {{ books|length }} book{{ books|pluralize }} for "{{ search_term }}"</p>
+        {% elif is_filtered %}
+            <p class="text-muted">Showing {{ books|length }} book{{ books|pluralize }} in {{ selected_genre }}</p>
+        {% else %}
+            <p class="text-muted">Showing {{ books|length }} available book{{ books|pluralize }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Books Grid -->
+<div class="row">
+    {% for book in books %}
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="card book-card h-100">
+            <div class="book-cover">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">{{ book.1 }}</h5> {# book.name #}
+                {% if book.2 %} {# series_name #}
+                    <p class="text-muted small mb-1">{{ book.2 }}</p>
+                {% endif %}
+                <p class="card-text text-primary mb-2">
+                    <strong>{{ book.7 }} {{ book.8 }}</strong> {# author first/last #}
+                </p>
+                {% if book.5 %} {# genre #}
+                    <span class="badge bg-secondary mb-2">{{ book.5 }}</span>
+                {% endif %}
+                <div class="mt-auto">
+                    <p class="card-text mb-2">
+                        <strong>${{ book.6 }}</strong> {# price #}
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'books:book_detail' book.0 %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </a>
+                        {% if user.is_authenticated %}
+                            <form method="post" action="{% url 'books:checkout_book' book.0 %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm w-100">
+                                    <i class="fas fa-shopping-cart me-1"></i>Checkout
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <h4>No books found</h4>
+            <p>Try adjusting your search criteria or browse all available books.</p>
+            <a href="{% url 'books:catalog' %}" class="btn btn-primary">
+                <i class="fas fa-home me-1"></i>View All Books
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination (if needed in future) -->
+{% if books|length > 20 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Book pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <span class="page-link">Previous</span>
+                </li>
+                <li class="page-item active">
+                    <span class="page-link">1</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">2</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Popular Books - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4 text-center mb-4">
+            <i class="fas fa-star text-warning me-3"></i>Popular Books
+        </h1>
+        <p class="lead text-center text-muted">Most borrowed books in our library</p>
+    </div>
+</div>
+
+<!-- Books Grid -->
+<div class="row">
+    {% for book in books %}
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="card book-card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <div class="book-cover mx-auto mb-3" style="width: 120px; height: 160px;">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="position-absolute top-0 start-0">
+                        <span class="badge bg-warning text-dark">#{{ forloop.counter }}</span>
+                    </div>
+                </div>
+
+                <h5 class="card-title">{{ book.1 }}</h5> {# name #}
+                <p class="card-text text-primary mb-2">
+                    <strong>{{ book.4 }} {{ book.5 }}</strong> {# author #}
+                </p>
+
+                {% if book.3 %} {# genre #}
+                    <span class="badge bg-secondary mb-2">{{ book.3 }}</span>
+                {% endif %}
+
+                <div class="mb-3">
+                    <small class="text-muted">Checkouts:</small>
+                    <div class="h5 text-success">{{ book.6 }}</div> {# checkout_count #}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="{% url 'books:book_detail' book.0 %}" class="btn btn-outline-primary">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </a>
+                    {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'books:checkout_book' book.0 %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shopping-cart me-1"></i>Checkout
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <h4>No Popular Books Yet</h4>
+            <p>Books will appear here once they start getting checked out.</p>
+            <a href="{% url 'books:catalog' %}" class="btn btn-primary">
+                <i class="fas fa-home me-1"></i>Browse All Books
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

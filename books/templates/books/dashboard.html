@@ -1,0 +1,242 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Dashboard - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4">
+            <i class="fas fa-tachometer-alt text-primary me-3"></i>My Dashboard
+        </h1>
+        <p class="lead text-muted">Welcome back, {{ user.first }}!</p>
+    </div>
+</div>
+
+<!-- Account Balance Alert -->
+{% if user_balance > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Outstanding Balance:</strong> ${{ user_balance }}
+            <a href="#" class="alert-link">Pay Now</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Current Checkouts -->
+    <div class="col-lg-8">
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-book-reader me-2"></i>Current Checkouts
+                    {% if overdue_count > 0 %}
+                        <span class="badge bg-danger ms-2">{{ overdue_count }} Overdue</span>
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                {% if current_checkouts %}
+                    <div class="row">
+                        {% for checkout in current_checkouts %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border {% if checkout.3 < now %}border-danger{% endif %}">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ checkout.4 }}</h6> {# book_name #}
+                                    <p class="card-text small text-muted mb-2">
+                                        {{ checkout.6 }} {{ checkout.7 }} {# author #}
+                                    </p>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Checked out:</small><br>
+                                            <strong>{{ checkout.2|date:"M j, Y" }}</strong> {# out_time #}
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Due:</small><br>
+                                            <strong class="{% if checkout.3 < now %}text-danger{% endif %}">
+                                                {{ checkout.3|date:"M j, Y" }} {# due_time #}
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    {% if checkout.5 > 0 %}
+                                        <div class="mt-2">
+                                            <span class="badge bg-warning">Fine: ${{ checkout.5 }}</span>
+                                        </div>
+                                    {% endif %}
+                                    <div class="mt-3">
+                                        <form method="post" action="{% url 'books:return_book' checkout.0 %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-undo me-1"></i>Return Book
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Current Checkouts</h5>
+                        <p class="text-muted">You haven't checked out any books yet.</p>
+                        <a href="{% url 'books:catalog' %}" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Browse Books
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Checkout History -->
+        <div class="card dashboard-card">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Checkout History
+                </h4>
+            </div>
+            <div class="card-body">
+                {% if checkout_history %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Book</th>
+                                    <th>Author</th>
+                                    <th>Checked Out</th>
+                                    <th>Returned</th>
+                                    <th>Fine</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for checkout in checkout_history %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'books:book_detail' checkout.0 %}" class="text-decoration-none">
+                                            {{ checkout.4 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ checkout.6 }} {{ checkout.7 }}</td>
+                                    <td>{{ checkout.2|date:"M j" }}</td>
+                                    <td>{{ checkout.3|date:"M j" }}</td>
+                                    <td>
+                                        {% if checkout.5 > 0 %}
+                                            <span class="text-danger">${{ checkout.5 }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="#" class="btn btn-outline-info">View Full History</a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Checkout History</h5>
+                        <p class="text-muted">Your reading history will appear here.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Account Summary -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i>Account Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h4 text-primary">{{ current_checkouts|length }}</div>
+                        <small class="text-muted">Current Loans</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-info">{{ checkout_history|length }}</div>
+                        <small class="text-muted">Books Read</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h5 {% if user_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                            ${{ user_balance }}
+                        </div>
+                        <small class="text-muted">Balance</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h5 text-warning">{{ overdue_count }}</div>
+                        <small class="text-muted">Overdue</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Books -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-heart me-2"></i>Favorite Books
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if favorite_books %}
+                    {% for book in favorite_books %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-book text-muted me-2"></i>
+                            <div>
+                                <a href="{% url 'books:book_detail' book.0 %}" class="text-decoration-none">
+                                    {{ book.1 }}
+                                </a>
+                                <br><small class="text-muted">{{ book.3 }} {{ book.4 }}</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No favorite books yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Favorite Authors -->
+        <div class="card dashboard-card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-friends me-2"></i>Favorite Authors
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if favorite_authors %}
+                    {% for author in favorite_authors %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-user text-muted me-2"></i>
+                            <div>
+                                <a href="{% url 'books:author_detail' author.0 %}" class="text-decoration-none">
+                                    {{ author.1 }} {{ author.2 }}
+                                </a>
+                                {% if author.4 %}
+                                    <br><small class="text-muted">{{ author.4 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No favorite authors yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
