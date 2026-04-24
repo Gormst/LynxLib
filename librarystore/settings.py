@@ -43,6 +43,15 @@ INSTALLED_APPS = [
 
 # Custom user model
 AUTH_USER_MODEL = 'books.User'
+AUTHENTICATION_BACKENDS = [
+    'books.auth_backends.UserIDBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

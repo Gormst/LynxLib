@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -11,6 +12,33 @@ from .utils import (
     get_active_promotions, get_book_details_with_promotion
 )
 from .models import Book, Author, User, Checkout, Reservation, Review
+
+
+def login_view(request):
+    """
+    Simple login by entering a user ID from the preloaded users table.
+    """
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        if user_id:
+            user = authenticate(request, user_id=user_id)
+            if user:
+                login(request, user)
+                messages.success(request, f"Logged in as {user.first} {user.last}.")
+                return redirect('books:user_dashboard')
+            messages.error(request, 'User ID not found. Please try again.')
+        else:
+            messages.error(request, 'Please enter a User ID.')
+
+    return render(request, 'books/login.html')
+
+
+@login_required
+def logout_view(request):
+    """Logout the currently logged-in user."""
+    logout(request)
+    messages.success(request, 'You have been logged out.')
+    return redirect('books:catalog')
 
 
 def book_catalog(request):

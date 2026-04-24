@@ -22,6 +22,10 @@ urlpatterns = [
     # User dashboard
     path('dashboard/', views.user_dashboard, name='user_dashboard'),
 
+    # Authentication
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+
     # Popular books and promotions
     path('popular/', views.popular_books, name='popular_books'),
     path('promotions/', views.promotions, name='promotions'),

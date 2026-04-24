@@ -235,7 +235,7 @@ def get_book_details_with_promotion(book_id):
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT b.bookID, b.name, b.series_name, b.publisher, b.genre, b.price, b.pub_date,
-                   a.first as author_first, a.last as author_last, a.bio as author_bio,
+                   a.authorID as author_id, a.first as author_first, a.last as author_last, a.bio as author_bio,
                    p.discount_percent, p.start_time, p.end_time
             FROM Books b
             JOIN Authors a ON b.authorID = a.authorID
@@ -253,12 +253,13 @@ def get_book_details_with_promotion(book_id):
                 'genre': result[4],
                 'price': result[5],
                 'pub_date': result[6],
-                'author_first': result[7],
-                'author_last': result[8],
-                'author_bio': result[9],
-                'discount_percent': result[10],
-                'promotion_start': result[11],
-                'promotion_end': result[12],
-                'discounted_price': result[5] * (1 - (result[10] / 100)) if result[10] else result[5]
+                'author_id': result[7],
+                'author_first': result[8],
+                'author_last': result[9],
+                'author_bio': result[10],
+                'discount_percent': result[11],
+                'promotion_start': result[12],
+                'promotion_end': result[13],
+                'discounted_price': result[5] * (1 - (result[11] / 100)) if result[11] else result[5]
             }
         return None
