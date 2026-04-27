@@ -86,10 +86,16 @@ WSGI_APPLICATION = 'librarystore.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'practice'),
+        'USER': os.environ.get('POSTGRES_USER', 'arrjn-27'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'arrjn-27'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'dbclass.rhodescs.org'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
