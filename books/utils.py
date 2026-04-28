@@ -220,7 +220,9 @@ def get_active_promotions():
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT p.promID, p.bookID, p.discount_percent, p.start_time, p.end_time,
-                   b.name as book_name, a.first as author_first, a.last as author_last
+                   b.name as book_name, b.price as original_price,
+                   b.price * (1 - (p.discount_percent::numeric / 100)) as discounted_price,
+                   a.first as author_first, a.last as author_last
             FROM Promotions p
             JOIN Books b ON p.bookID = b.bookID
             JOIN Authors a ON b.authorID = a.authorID

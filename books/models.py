@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
     """Custom user model extending Django's AbstractUser"""
-    userID = models.AutoField(primary_key=True)
+    userID = models.IntegerField(primary_key=True)
     first = models.CharField(max_length=255)
     last = models.CharField(max_length=255)
     is_staff = models.BooleanField(default=False)
@@ -22,7 +22,7 @@ class User(AbstractUser):
 
 class Author(models.Model):
     """Author model"""
-    authorID = models.AutoField(primary_key=True)
+    authorID = models.IntegerField(primary_key=True)
     first = models.CharField(max_length=255)
     last = models.CharField(max_length=255)
     bio = models.TextField(max_length=4111, blank=True)
@@ -38,7 +38,7 @@ class Author(models.Model):
 
 class Book(models.Model):
     """Book model"""
-    bookID = models.AutoField(primary_key=True)
+    bookID = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
     series_name = models.CharField(max_length=255, blank=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, db_column='authorID')
@@ -107,13 +107,14 @@ class Reservation(models.Model):
 class Review(models.Model):
     """Review model"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='userID')
+    book_name = models.CharField(max_length=255)
     book = models.ForeignKey(Book, on_delete=models.CASCADE, db_column='bookID')
-    book_name = models.CharField(max_length=255)  # Redundant but in schema
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, db_column='authorID')
     score = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
 
     class Meta:
         db_table = 'Reviews'
-        unique_together = [['user', 'book']]  # Fixed: removed authorID from PK
+        unique_together = [['user', 'book', 'author']]
 
     def __str__(self):
         return f"{self.user} rated {self.book} - {self.score}/10"
@@ -148,7 +149,7 @@ class FavoriteBook(models.Model):
 
 class Promotion(models.Model):
     """Promotion model"""
-    promID = models.AutoField(primary_key=True)
+    promID = models.IntegerField(primary_key=True)
     book = models.ForeignKey(Book, on_delete=models.CASCADE, db_column='bookID')
     discount_percent = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(100)])
     start_time = models.DateTimeField()

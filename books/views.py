@@ -105,6 +105,7 @@ def user_dashboard(request):
     user_balance = get_user_balance(user_id)
     favorite_books = get_user_favorite_books(user_id)
     favorite_authors = get_user_favorite_authors(user_id)
+    now = timezone.now()
 
     context = {
         'current_checkouts': current_checkouts,
@@ -112,7 +113,8 @@ def user_dashboard(request):
         'user_balance': user_balance,
         'favorite_books': favorite_books,
         'favorite_authors': favorite_authors,
-        'overdue_count': sum(1 for checkout in current_checkouts if checkout[3] < timezone.now()),  # due_time index
+        'overdue_count': sum(1 for checkout in current_checkouts if checkout[2] < now),  # due_time index
+        'now': now,
     }
 
     return render(request, 'books/dashboard.html', context)
@@ -152,7 +154,7 @@ def checkout_book(request, book_id):
     Handle book checkout process
     """
     if request.method != 'POST':
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
     user_id = request.user.userID
 
@@ -162,7 +164,7 @@ def checkout_book(request, book_id):
 
     if not book_available:
         messages.error(request, "This book is not currently available for checkout.")
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
     try:
         with transaction.atomic():
@@ -177,11 +179,11 @@ def checkout_book(request, book_id):
             )
 
             messages.success(request, f"Successfully checked out book. Due date: {due_date.date()}")
-            return redirect('user_dashboard')
+            return redirect('books:user_dashboard')
 
     except Exception as e:
         messages.error(request, "An error occurred while checking out the book. Please try again.")
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
 
 @login_required
@@ -190,7 +192,7 @@ def return_book(request, book_id):
     Handle book return process
     """
     if request.method != 'POST':
-        return redirect('user_dashboard')
+        return redirect('books:user_dashboard')
 
     user_id = request.user.userID
 
@@ -218,14 +220,14 @@ def return_book(request, book_id):
             else:
                 messages.success(request, "Book returned successfully!")
 
-            return redirect('user_dashboard')
+            return redirect('books:user_dashboard')
 
     except Checkout.DoesNotExist:
         messages.error(request, "No active checkout found for this book.")
-        return redirect('user_dashboard')
+        return redirect('books:user_dashboard')
     except Exception as e:
         messages.error(request, "An error occurred while returning the book. Please try again.")
-        return redirect('user_dashboard')
+        return redirect('books:user_dashboard')
 
 
 @login_required
@@ -234,7 +236,7 @@ def reserve_book(request, book_id):
     Handle book reservation process
     """
     if request.method != 'POST':
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
     user_id = request.user.userID
 
@@ -243,7 +245,7 @@ def reserve_book(request, book_id):
 
     if existing_reservation:
         messages.warning(request, "You already have a reservation for this book.")
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
     try:
         with transaction.atomic():
@@ -254,11 +256,11 @@ def reserve_book(request, book_id):
             )
 
             messages.success(request, "Book reserved successfully! You'll be notified when it becomes available.")
-            return redirect('book_detail', book_id=book_id)
+            return redirect('books:book_detail', book_id=book_id)
 
     except Exception as e:
         messages.error(request, "An error occurred while reserving the book. Please try again.")
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
 
 @login_required
@@ -267,7 +269,7 @@ def add_favorite_book(request, book_id):
     Add a book to user's favorites
     """
     if request.method != 'POST':
-        return redirect('book_detail', book_id=book_id)
+        return redirect('books:book_detail', book_id=book_id)
 
     user_id = request.user.userID
 
@@ -282,7 +284,7 @@ def add_favorite_book(request, book_id):
     except Exception as e:
         messages.error(request, "Could not add book to favorites.")
 
-    return redirect('book_detail', book_id=book_id)
+    return redirect('books:book_detail', book_id=book_id)
 
 
 @login_required
@@ -291,7 +293,7 @@ def add_favorite_author(request, author_id):
     Add an author to user's favorites
     """
     if request.method != 'POST':
-        return redirect('author_detail', author_id=author_id)
+        return redirect('books:author_detail', author_id=author_id)
 
     user_id = request.user.userID
 
@@ -305,7 +307,7 @@ def add_favorite_author(request, author_id):
     except Exception as e:
         messages.error(request, "Could not add author to favorites.")
 
-    return redirect('author_detail', author_id=author_id)
+    return redirect('books:author_detail', author_id=author_id)
 
 
 def promotions(request):

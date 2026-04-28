@@ -33,16 +33,16 @@
 
                 <h5 class="card-title">{{ promotion.5 }}</h5> {# book_name #}
                 <p class="card-text text-primary mb-2">
-                    <strong>{{ promotion.6 }} {{ promotion.7 }}</strong> {# author #}
+                    <strong>{{ promotion.8 }} {{ promotion.9 }}</strong> {# author #}
                 </p>
 
                 <div class="mb-3">
                     <div class="d-flex align-items-center justify-content-center">
                         <span class="text-decoration-line-through text-muted me-2 h6 mb-0">
-                            $99.99 {# placeholder - would need to get actual price #}
+                            ${{ promotion.6|floatformat:2 }}
                         </span>
                         <span class="h4 text-success mb-0 fw-bold">
-                            ${{ "%.2f"|format:99.99|floatformat:2 }} {# placeholder - would calculate discount #}
+                            ${{ promotion.7|floatformat:2 }}
                         </span>
                     </div>
                 </div>

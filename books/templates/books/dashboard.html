@@ -42,7 +42,7 @@
                     <div class="row">
                         {% for checkout in current_checkouts %}
                         <div class="col-md-6 mb-3">
-                            <div class="card border {% if checkout.3 < now %}border-danger{% endif %}">
+                            <div class="card border {% if checkout.2 < now %}border-danger{% endif %}">
                                 <div class="card-body">
                                     <h6 class="card-title">{{ checkout.4 }}</h6> {# book_name #}
                                     <p class="card-text small text-muted mb-2">
@@ -51,16 +51,16 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <small class="text-muted">Checked out:</small><br>
-                                            <strong>{{ checkout.2|date:"M j, Y" }}</strong> {# out_time #}
+                                            <strong>{{ checkout.1|date:"M j, Y" }}</strong> {# out_time #}
                                         </div>
                                         <div class="col-6">
                                             <small class="text-muted">Due:</small><br>
-                                            <strong class="{% if checkout.3 < now %}text-danger{% endif %}">
-                                                {{ checkout.3|date:"M j, Y" }} {# due_time #}
+                                            <strong class="{% if checkout.2 < now %}text-danger{% endif %}">
+                                                {{ checkout.2|date:"M j, Y" }} {# due_time #}
                                             </strong>
                                         </div>
                                     </div>
-                                    {% if checkout.5 > 0 %}
+                                    {% if checkout.3 > 0 %}
                                         <div class="mt-2">
                                             <span class="badge bg-warning">Fine: ${{ checkout.5 }}</span>
                                         </div>
@@ -116,15 +116,15 @@
                                 <tr>
                                     <td>
                                         <a href="{% url 'books:book_detail' checkout.0 %}" class="text-decoration-none">
-                                            {{ checkout.4 }}
+                                            {{ checkout.5 }}
                                         </a>
                                     </td>
-                                    <td>{{ checkout.6 }} {{ checkout.7 }}</td>
+                                    <td>{{ checkout.7 }} {{ checkout.8 }}</td>
+                                    <td>{{ checkout.1|date:"M j" }}</td>
                                     <td>{{ checkout.2|date:"M j" }}</td>
-                                    <td>{{ checkout.3|date:"M j" }}</td>
                                     <td>
-                                        {% if checkout.5 > 0 %}
-                                            <span class="text-danger">${{ checkout.5 }}</span>
+                                        {% if checkout.4 > 0 %}
+                                            <span class="text-danger">${{ checkout.4 }}</span>
                                         {% else %}
                                             -
                                         {% endif %}
@@ -200,7 +200,7 @@
                                 <a href="{% url 'books:book_detail' book.0 %}" class="text-decoration-none">
                                     {{ book.1 }}
                                 </a>
-                                <br><small class="text-muted">{{ book.3 }} {{ book.4 }}</small>
+                                <br><small class="text-muted">{{ book.4 }} {{ book.5 }}</small>
                             </div>
                         </div>
                     {% endfor %}
