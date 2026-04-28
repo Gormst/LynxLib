@@ -13,8 +13,27 @@ class User(AbstractUser):
     mailing_address = models.CharField(max_length=255, blank=True)
     zipcode = models.CharField(max_length=255, blank=True)
 
+    USERNAME_FIELD = 'userID'
+    REQUIRED_FIELDS = ['first', 'last']
+
     class Meta:
         db_table = 'Users'
+
+    @property
+    def first_name(self):
+        return self.first
+
+    @first_name.setter
+    def first_name(self, value):
+        self.first = value
+
+    @property
+    def last_name(self):
+        return self.last
+
+    @last_name.setter
+    def last_name(self, value):
+        self.last = value
 
     def __str__(self):
         return f"{self.first} {self.last}"
