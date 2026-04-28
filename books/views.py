@@ -19,14 +19,19 @@ def login_view(request):
     Simple login by entering a user ID from the preloaded users table.
     """
     if request.method == 'POST':
-        user_id = request.POST.get('user_id')
-        if user_id:
-            user = authenticate(request, user_id=user_id)
-            if user:
-                login(request, user)
-                messages.success(request, f"Logged in as {user.first} {user.last}.")
-                return redirect('books:user_dashboard')
-            messages.error(request, 'User ID not found. Please try again.')
+        user_id_str = request.POST.get('user_id')
+        if user_id_str:
+            try:
+                user_id = int(user_id_str)
+                user = authenticate(request, user_id=user_id)
+                if user:
+                    login(request, user)
+                    messages.success(request, f"Logged in as {user.first} {user.last}.")
+                    return redirect('books:user_dashboard')
+                else:
+                    messages.error(request, 'User ID not found. Please check your User ID and try again.')
+            except ValueError:
+                messages.error(request, 'User ID must be a valid number.')
         else:
             messages.error(request, 'Please enter a User ID.')
 
@@ -166,6 +171,17 @@ def checkout_book(request, book_id):
         messages.error(request, "This book is not currently available for checkout.")
         return redirect('books:book_detail', book_id=book_id)
 
+    # Check if user already has this book checked out
+    existing_checkout = Checkout.objects.filter(
+        user_id=user_id,
+        book_id=book_id,
+        in_time__isnull=True
+    ).exists()
+
+    if existing_checkout:
+        messages.error(request, "You already have this book checked out.")
+        return redirect('books:book_detail', book_id=book_id)
+
     try:
         with transaction.atomic():
             # Create checkout record
@@ -239,6 +255,17 @@ def reserve_book(request, book_id):
         return redirect('books:book_detail', book_id=book_id)
 
     user_id = request.user.userID
+
+    # Check if user already has this book checked out
+    existing_checkout = Checkout.objects.filter(
+        user_id=user_id,
+        book_id=book_id,
+        in_time__isnull=True
+    ).exists()
+
+    if existing_checkout:
+        messages.warning(request, "You already have this book checked out.")
+        return redirect('books:book_detail', book_id=book_id)
 
     # Check if user already has a reservation for this book
     existing_reservation = Reservation.objects.filter(user_id=user_id, book_id=book_id).exists()
