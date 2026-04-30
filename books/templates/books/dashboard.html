@@ -46,7 +46,7 @@
                                 <div class="card-body">
                                     <h6 class="card-title">{{ checkout.4 }}</h6> {# book_name #}
                                     <p class="card-text small text-muted mb-2">
-                                        {{ checkout.6 }} {{ checkout.7 }} {# author #}
+                                        {{ checkout.7 }} {{ checkout.8 }} {# author #}
                                     </p>
                                     <div class="row">
                                         <div class="col-6">
@@ -62,7 +62,7 @@
                                     </div>
                                     {% if checkout.3 > 0 %}
                                         <div class="mt-2">
-                                            <span class="badge bg-warning">Fine: ${{ checkout.5 }}</span>
+                                            <span class="badge bg-warning">Fine: ${{ checkout.3 }}</span>
                                         </div>
                                     {% endif %}
                                     <div class="mt-3">
@@ -187,9 +187,14 @@
         <!-- Favorite Books -->
         <div class="card dashboard-card mb-4">
             <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">
-                    <i class="fas fa-heart me-2"></i>Favorite Books
-                </h5>
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-heart me-2"></i>Favorite Books
+                    </h5>
+                    <a href="{% url 'books:edit_favorites' %}" class="btn btn-sm btn-outline-dark">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 {% if favorite_books %}
@@ -213,9 +218,14 @@
         <!-- Favorite Authors -->
         <div class="card dashboard-card">
             <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-friends me-2"></i>Favorite Authors
-                </h5>
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-friends me-2"></i>Favorite Authors
+                    </h5>
+                    <a href="{% url 'books:edit_favorites' %}" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 {% if favorite_authors %}

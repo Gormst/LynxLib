@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.utils import timezone
 from .utils import (
@@ -9,7 +10,11 @@ from .utils import (
     get_user_checkout_history, get_popular_books, search_books_by_title,
     get_books_by_author, get_user_balance, get_book_reservation_queue,
     get_book_average_rating, get_user_favorite_books, get_user_favorite_authors,
-    get_active_promotions, get_book_details_with_promotion
+    get_active_promotions, get_book_details_with_promotion, get_catalog_genres,
+    get_author_by_id, get_all_books_for_favorites, get_all_authors_for_favorites,
+    get_user_favorite_book_ids, get_user_favorite_author_ids, replace_user_favorites,
+    add_user_favorite_book, add_user_favorite_author, user_has_active_checkout,
+    checkout_book_for_user, return_book_for_user
 )
 from .models import Book, Author, User, Checkout, Reservation, Review
 
@@ -56,17 +61,24 @@ def book_catalog(request):
 
     if search:
         books = search_books_by_title(search)
-        context = {'books': books, 'search_term': search, 'is_search': True}
+        context = {'search_term': search, 'is_search': True}
     elif genre:
         books = get_books_by_genre(genre)
-        context = {'books': books, 'selected_genre': genre, 'is_filtered': True}
+        context = {'selected_genre': genre, 'is_filtered': True}
     else:
         books = get_available_books()
-        context = {'books': books}
+        context = {}
 
-    # Get unique genres for filter dropdown
-    genres = Book.objects.values_list('genre', flat=True).distinct().exclude(genre__isnull=True)
-    context['genres'] = sorted(genres)
+    paginator = Paginator(books, 12)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
+    context['books'] = page_obj.object_list
+    context['page_obj'] = page_obj
+    context['total_books'] = paginator.count
+    context['query_string'] = query_params.urlencode()
+    context['genres'] = get_catalog_genres()
 
     return render(request, 'books/catalog.html', context)
 
@@ -110,7 +122,7 @@ def user_dashboard(request):
     user_balance = get_user_balance(user_id)
     favorite_books = get_user_favorite_books(user_id)
     favorite_authors = get_user_favorite_authors(user_id)
-    now = timezone.now()
+    now = timezone.now().replace(tzinfo=None)
 
     context = {
         'current_checkouts': current_checkouts,
@@ -125,13 +137,37 @@ def user_dashboard(request):
     return render(request, 'books/dashboard.html', context)
 
 
+@login_required
+def edit_favorites(request):
+    """
+    Edit favorite books and authors from full selection lists.
+    """
+    user_id = request.user.userID
+
+    if request.method == 'POST':
+        book_ids = [int(book_id) for book_id in request.POST.getlist('favorite_books') if book_id.isdigit()]
+        author_ids = [int(author_id) for author_id in request.POST.getlist('favorite_authors') if author_id.isdigit()]
+        with transaction.atomic():
+            replace_user_favorites(user_id, book_ids, author_ids)
+        messages.success(request, 'Favorites updated.')
+        return redirect('books:user_dashboard')
+
+    context = {
+        'all_books': get_all_books_for_favorites(),
+        'all_authors': get_all_authors_for_favorites(),
+        'favorite_book_ids': get_user_favorite_book_ids(user_id),
+        'favorite_author_ids': get_user_favorite_author_ids(user_id),
+    }
+
+    return render(request, 'books/edit_favorites.html', context)
+
+
 def author_detail(request, author_id):
     """
     Display author information and their books
     """
-    try:
-        author = Author.objects.get(authorID=author_id)
-    except Author.DoesNotExist:
+    author = get_author_by_id(author_id)
+    if not author:
         return render(request, 'books/author_not_found.html', {'author_id': author_id})
 
     books = get_books_by_author(author_id)
@@ -171,28 +207,17 @@ def checkout_book(request, book_id):
         messages.error(request, "This book is not currently available for checkout.")
         return redirect('books:book_detail', book_id=book_id)
 
-    # Check if user already has this book checked out
-    existing_checkout = Checkout.objects.filter(
-        user_id=user_id,
-        book_id=book_id,
-        in_time__isnull=True
-    ).exists()
-
-    if existing_checkout:
+    if user_has_active_checkout(user_id, book_id):
         messages.error(request, "You already have this book checked out.")
         return redirect('books:book_detail', book_id=book_id)
 
     try:
         with transaction.atomic():
-            # Create checkout record
-            due_date = timezone.now() + timezone.timedelta(days=14)  # 2 weeks default
-            checkout = Checkout.objects.create(
-                user_id=user_id,
-                book_id=book_id,
-                out_time=timezone.now(),
-                due_time=due_date,
-                fine=0.00
-            )
+            due_date = checkout_book_for_user(user_id, book_id)
+
+            if not due_date:
+                messages.error(request, "This book is not currently available for checkout.")
+                return redirect('books:book_detail', book_id=book_id)
 
             messages.success(request, f"Successfully checked out book. Due date: {due_date.date()}")
             return redirect('books:user_dashboard')
@@ -214,33 +239,17 @@ def return_book(request, book_id):
 
     try:
         with transaction.atomic():
-            # Find the active checkout for this user and book
-            checkout = Checkout.objects.get(
-                user_id=user_id,
-                book_id=book_id,
-                in_time__isnull=True
-            )
+            fine = return_book_for_user(user_id, book_id)
 
-            # Update return time
-            checkout.in_time = timezone.now()
-
-            # Calculate any fines (simplified - $0.50 per day overdue)
-            if checkout.due_time < checkout.in_time:
-                days_overdue = (checkout.in_time - checkout.due_time).days
-                checkout.fine = max(0, days_overdue * 0.50)
-
-            checkout.save()
-
-            if checkout.fine > 0:
-                messages.warning(request, f"Book returned successfully. Late fee: ${checkout.fine:.2f}")
+            if fine is None:
+                messages.error(request, "No active checkout found for this book.")
+            elif fine > 0:
+                messages.warning(request, f"Book returned successfully. Late fee: ${fine:.2f}")
             else:
                 messages.success(request, "Book returned successfully!")
 
             return redirect('books:user_dashboard')
 
-    except Checkout.DoesNotExist:
-        messages.error(request, "No active checkout found for this book.")
-        return redirect('books:user_dashboard')
     except Exception as e:
         messages.error(request, "An error occurred while returning the book. Please try again.")
         return redirect('books:user_dashboard')
@@ -301,12 +310,7 @@ def add_favorite_book(request, book_id):
     user_id = request.user.userID
 
     try:
-        from .models import FavoriteBook
-        FavoriteBook.objects.get_or_create(
-            user_id=user_id,
-            book_id=book_id,
-            author_id=Book.objects.get(bookID=book_id).author_id
-        )
+        add_user_favorite_book(user_id, book_id)
         messages.success(request, "Book added to favorites!")
     except Exception as e:
         messages.error(request, "Could not add book to favorites.")
@@ -325,11 +329,7 @@ def add_favorite_author(request, author_id):
     user_id = request.user.userID
 
     try:
-        from .models import FavoriteAuthor
-        FavoriteAuthor.objects.get_or_create(
-            user_id=user_id,
-            author_id=author_id
-        )
+        add_user_favorite_author(user_id, author_id)
         messages.success(request, "Author added to favorites!")
     except Exception as e:
         messages.error(request, "Could not add author to favorites.")

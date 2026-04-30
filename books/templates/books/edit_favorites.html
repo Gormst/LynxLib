@@ -1,0 +1,91 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Edit Favorites - Lynx Library{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5">
+            <i class="fas fa-heart text-primary me-3"></i>Edit Favorites
+        </h1>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-lg-7 mb-4">
+            <div class="card dashboard-card h-100">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-book me-2"></i>Favorite Books
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for book in all_books %}
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="favorite_books"
+                                       value="{{ book.0 }}" id="book_{{ book.0 }}"
+                                       {% if book.0 in favorite_book_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="book_{{ book.0 }}">
+                                    <strong>{{ book.1 }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ book.5 }} {{ book.6 }}{% if book.3 %} · {{ book.3 }}{% endif %}
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 mb-4">
+            <div class="card dashboard-card h-100">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-friends me-2"></i>Favorite Authors
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% for author in all_authors %}
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="favorite_authors"
+                               value="{{ author.0 }}" id="author_{{ author.0 }}"
+                               {% if author.0 in favorite_author_ids %}checked{% endif %}>
+                        <label class="form-check-label" for="author_{{ author.0 }}">
+                            <strong>{{ author.1 }} {{ author.2 }}</strong>
+                            {% if author.3 or author.4 %}
+                                <br>
+                                <small class="text-muted">
+                                    {% if author.3 and author.4 %}
+                                        {{ author.3 }}, {{ author.4 }}
+                                    {% elif author.3 %}
+                                        {{ author.3 }}
+                                    {% else %}
+                                        {{ author.4 }}
+                                    {% endif %}
+                                </small>
+                            {% endif %}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+        <a href="{% url 'books:user_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-times me-1"></i>Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Save Favorites
+        </button>
+    </div>
+</form>
+{% endblock %}

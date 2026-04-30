@@ -20,6 +20,41 @@ from django.utils import timezone
 from .models import Book, Checkout, User, Author, Review, Reservation
 
 
+def get_catalog_genres():
+    """Get genres available for catalog filtering."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT DISTINCT genre
+            FROM Books
+            WHERE genre IS NOT NULL AND genre <> ''
+            ORDER BY genre
+        """)
+        return [row[0] for row in cursor.fetchall()]
+
+
+def get_author_by_id(author_id):
+    """Get author details by ID."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT authorID, first, last, bio, city, country
+            FROM Authors
+            WHERE authorID = %s
+        """, [author_id])
+        row = cursor.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        'authorID': row[0],
+        'first': row[1],
+        'last': row[2],
+        'bio': row[3],
+        'city': row[4],
+        'country': row[5],
+    }
+
+
 def get_available_books():
     """
     Get all books that are currently available for checkout
@@ -28,7 +63,7 @@ def get_available_books():
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT b.bookID, b.name, b.series_name, b.publisher, b.genre, b.price,
-                   a.first as author_first, a.last as author_last
+                   a.first as author_first, a.last as author_last, a.authorID
             FROM Books b
             JOIN Authors a ON b.authorID = a.authorID
             LEFT JOIN Checkouts c ON b.bookID = c.bookID AND c.in_time IS NULL
@@ -44,8 +79,8 @@ def get_books_by_genre(genre):
     """Get all books in a specific genre"""
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT b.bookID, b.name, b.series_name, b.publisher, b.price,
-                   a.first as author_first, a.last as author_last
+            SELECT b.bookID, b.name, b.series_name, b.publisher, b.genre, b.price,
+                   a.first as author_first, a.last as author_last, a.authorID
             FROM Books b
             JOIN Authors a ON b.authorID = a.authorID
             WHERE b.genre = %s
@@ -77,7 +112,7 @@ def get_user_current_checkouts(user_id):
         cursor.execute("""
             SELECT c.bookID, c.out_time, c.due_time, c.fine,
                    b.name as book_name, b.series_name, b.genre,
-                   a.first as author_first, a.last as author_last
+                   a.first as author_first, a.last as author_last, a.authorID
             FROM Checkouts c
             JOIN Books b ON c.bookID = b.bookID
             JOIN Authors a ON b.authorID = a.authorID
@@ -93,7 +128,7 @@ def get_user_checkout_history(user_id, limit=50):
         cursor.execute("""
             SELECT c.bookID, c.out_time, c.in_time, c.due_time, c.fine,
                    b.name as book_name, b.series_name,
-                   a.first as author_first, a.last as author_last
+                   a.first as author_first, a.last as author_last, a.authorID
             FROM Checkouts c
             JOIN Books b ON c.bookID = b.bookID
             JOIN Authors a ON b.authorID = a.authorID
@@ -102,6 +137,60 @@ def get_user_checkout_history(user_id, limit=50):
             LIMIT %s
         """, [user_id, limit])
         return cursor.fetchall()
+
+
+def user_has_active_checkout(user_id, book_id):
+    """Check whether a user already has a book checked out."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT 1
+            FROM Checkouts
+            WHERE userID = %s
+              AND bookID = %s
+              AND in_time IS NULL
+        """, [user_id, book_id])
+        return cursor.fetchone() is not None
+
+
+def checkout_book_for_user(user_id, book_id):
+    """Create a checkout row for a user and book."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO Checkouts (userID, bookID, out_time, in_time, due_time, fine)
+            SELECT %s, %s, CURRENT_TIMESTAMP, NULL, CURRENT_TIMESTAMP + INTERVAL '14 days', 0.00
+            WHERE EXISTS (
+                SELECT 1
+                FROM Books b
+                LEFT JOIN Checkouts c ON b.bookID = c.bookID AND c.in_time IS NULL
+                WHERE b.bookID = %s
+                  AND c.bookID IS NULL
+                  AND (b.in_circulation_from IS NULL OR b.in_circulation_from <= CURRENT_DATE)
+                  AND (b.in_circulation_until IS NULL OR b.in_circulation_until >= CURRENT_DATE)
+            )
+            RETURNING due_time
+        """, [user_id, book_id, book_id])
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+
+def return_book_for_user(user_id, book_id):
+    """Mark a user's active checkout as returned and calculate a fine."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            UPDATE Checkouts
+            SET in_time = CURRENT_TIMESTAMP,
+                fine = CASE
+                    WHEN due_time < CURRENT_TIMESTAMP
+                    THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - due_time)) / 86400) * 0.50)
+                    ELSE 0
+                END
+            WHERE userID = %s
+              AND bookID = %s
+              AND in_time IS NULL
+            RETURNING fine
+        """, [user_id, book_id])
+        result = cursor.fetchone()
+        return result[0] if result else None
 
 
 def get_popular_books(limit=10):
@@ -125,7 +214,7 @@ def search_books_by_title(search_term):
     with connection.cursor() as cursor:
         cursor.execute("""
             SELECT b.bookID, b.name, b.series_name, b.publisher, b.genre, b.price,
-                   a.first as author_first, a.last as author_last
+                   a.first as author_first, a.last as author_last, a.authorID
             FROM Books b
             JOIN Authors a ON b.authorID = a.authorID
             WHERE LOWER(b.name) LIKE LOWER(%s) OR LOWER(b.series_name) LIKE LOWER(%s)
@@ -213,6 +302,107 @@ def get_user_favorite_authors(user_id):
             ORDER BY a.last, a.first
         """, [user_id])
         return cursor.fetchall()
+
+
+def get_all_books_for_favorites():
+    """Get all books available as favorite choices."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT b.bookID, b.name, b.series_name, b.genre,
+                   b.authorID, a.first as author_first, a.last as author_last
+            FROM Books b
+            JOIN Authors a ON b.authorID = a.authorID
+            ORDER BY b.name
+        """)
+        return cursor.fetchall()
+
+
+def get_all_authors_for_favorites():
+    """Get all authors available as favorite choices."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT authorID, first, last, city, country
+            FROM Authors
+            ORDER BY last, first
+        """)
+        return cursor.fetchall()
+
+
+def get_user_favorite_book_ids(user_id):
+    """Get IDs for a user's favorite books."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT bookID
+            FROM FavoriteBooks
+            WHERE userID = %s
+        """, [user_id])
+        return {row[0] for row in cursor.fetchall()}
+
+
+def get_user_favorite_author_ids(user_id):
+    """Get IDs for a user's favorite authors."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT authorID
+            FROM FavoriteAuthors
+            WHERE userID = %s
+        """, [user_id])
+        return {row[0] for row in cursor.fetchall()}
+
+
+def replace_user_favorites(user_id, book_ids, author_ids):
+    """Replace a user's favorite books and authors."""
+    with connection.cursor() as cursor:
+        cursor.execute("DELETE FROM FavoriteBooks WHERE userID = %s", [user_id])
+        cursor.execute("DELETE FROM FavoriteAuthors WHERE userID = %s", [user_id])
+
+        for book_id in book_ids:
+            cursor.execute("""
+                INSERT INTO FavoriteBooks (userID, bookID, authorID)
+                SELECT %s, b.bookID, b.authorID
+                FROM Books b
+                WHERE b.bookID = %s
+            """, [user_id, book_id])
+
+        for author_id in author_ids:
+            cursor.execute("""
+                INSERT INTO FavoriteAuthors (userID, authorID)
+                SELECT %s, a.authorID
+                FROM Authors a
+                WHERE a.authorID = %s
+            """, [user_id, author_id])
+
+
+def add_user_favorite_book(user_id, book_id):
+    """Add a single favorite book if it is not already present."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO FavoriteBooks (userID, bookID, authorID)
+            SELECT %s, b.bookID, b.authorID
+            FROM Books b
+            WHERE b.bookID = %s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM FavoriteBooks fb
+                  WHERE fb.userID = %s AND fb.bookID = b.bookID
+              )
+        """, [user_id, book_id, user_id])
+
+
+def add_user_favorite_author(user_id, author_id):
+    """Add a single favorite author if they are not already present."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO FavoriteAuthors (userID, authorID)
+            SELECT %s, a.authorID
+            FROM Authors a
+            WHERE a.authorID = %s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM FavoriteAuthors fa
+                  WHERE fa.userID = %s AND fa.authorID = a.authorID
+              )
+        """, [user_id, author_id, user_id])
 
 
 def get_active_promotions():

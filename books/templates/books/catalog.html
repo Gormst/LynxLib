@@ -41,11 +41,11 @@
 
         <!-- Results Info -->
         {% if is_search %}
-            <p class="text-muted">Found {{ books|length }} book{{ books|pluralize }} for "{{ search_term }}"</p>
+            <p class="text-muted">Found {{ total_books }} book{{ total_books|pluralize }} for "{{ search_term }}"</p>
         {% elif is_filtered %}
-            <p class="text-muted">Showing {{ books|length }} book{{ books|pluralize }} in {{ selected_genre }}</p>
+            <p class="text-muted">Showing {{ total_books }} book{{ total_books|pluralize }} in {{ selected_genre }}</p>
         {% else %}
-            <p class="text-muted">Showing {{ books|length }} available book{{ books|pluralize }}</p>
+            <p class="text-muted">Showing {{ total_books }} available book{{ total_books|pluralize }}</p>
         {% endif %}
     </div>
 </div>
@@ -64,14 +64,16 @@
                     <p class="text-muted small mb-1">{{ book.2 }}</p>
                 {% endif %}
                 <p class="card-text text-primary mb-2">
-                    <strong>{{ book.7 }} {{ book.8 }}</strong> {# author first/last #}
+                    <a href="{% url 'books:author_detail' book.8 %}" class="text-decoration-none">
+                        <strong>By: {{ book.6 }} {{ book.7 }}</strong>
+                    </a> {# author first/last #}
                 </p>
-                {% if book.5 %} {# genre #}
-                    <span class="badge bg-secondary mb-2">{{ book.5 }}</span>
+                {% if book.4 %} {# genre #}
+                    <span class="badge bg-secondary mb-2">{{ book.4 }}</span>
                 {% endif %}
                 <div class="mt-auto">
                     <p class="card-text mb-2">
-                        <strong>${{ book.6 }}</strong> {# price #}
+                        <strong>${{ book.5 }}</strong> {# price #}
                     </p>
                     <div class="d-grid gap-2">
                         <a href="{% url 'books:book_detail' book.0 %}" class="btn btn-outline-primary btn-sm">
@@ -104,23 +106,35 @@
     {% endfor %}
 </div>
 
-<!-- Pagination (if needed in future) -->
-{% if books|length > 20 %}
+{% if page_obj.has_other_pages %}
 <div class="row mt-4">
     <div class="col-12">
         <nav aria-label="Book pagination">
             <ul class="pagination justify-content-center">
-                <li class="page-item disabled">
-                    <span class="page-link">Previous</span>
+                <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                    {% if page_obj.has_previous %}
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                    {% else %}
+                        <span class="page-link">Previous</span>
+                    {% endif %}
                 </li>
-                <li class="page-item active">
-                    <span class="page-link">1</span>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="#">2</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="#">Next</a>
+
+                {% for page_number in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == page_number %}active{% endif %}">
+                        {% if page_obj.number == page_number %}
+                            <span class="page-link">{{ page_number }}</span>
+                        {% else %}
+                            <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_number }}">{{ page_number }}</a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+
+                <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                    {% if page_obj.has_next %}
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                    {% else %}
+                        <span class="page-link">Next</span>
+                    {% endif %}
                 </li>
             </ul>
         </nav>

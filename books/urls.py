@@ -21,6 +21,7 @@ urlpatterns = [
 
     # User dashboard
     path('dashboard/', views.user_dashboard, name='user_dashboard'),
+    path('favorites/edit/', views.edit_favorites, name='edit_favorites'),
 
     # Authentication
     path('login/', views.login_view, name='login'),
